@@ -1,4 +1,4 @@
-#requires -Version 7
+﻿#requires -Version 7
 Set-StrictMode -Version Latest
 
 function Install-LatestIPFilter {
@@ -387,38 +387,50 @@ function Register-UpdateIPFilter {
     $DestinationPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($DestinationPath)
 
     # Prompt for missing inputs...
-    if ($UserName -AND !$PSBoundParameters.ContainsKey('UserPass')) {
-        $PSBoundParameters['UserPass'] = $UserPass = getQbtPassword
+    if ($UserName -AND !$UserPass) {
+        $UserPass = getQbtPassword
     }
 
+    $script = {
+        param(
+            $ServerUrl, $UserName, $UserPass,
+            $DestinationPath, $ServerPath,
+            [switch] $WaitForKey
+        )
+        Import-Module './Update-IPFilter.psm1'
+        $null = $PSBoundParameters.Remove('WaitForKey')
+        Update-IPFilter @PSBoundParameters -Verbose
+        if ($WaitForKey) {
+            Write-Host 'Press any key to exit...' -NoNewline
+            $null = [System.Console]::ReadKey()
+        }
+        exit $global:LASTEXITCODE
+    }
     $scriptArgs = @(
         '-ServerUrl', (escapeArg $ServerUrl)
         if ($UserName) { '-UserName', (escapeArg $UserName) }
-        if ($PSBoundParameters.ContainsKey('UserPass')) { '-UserPass', (escapeArg $UserPass) }
+        if ($UserPass) { '-UserPass', (escapeArg $UserPass) }
         '-DestinationPath', (escapeArg $DestinationPath)
         if ($ServerPath) { '-ServerPath', (escapeArg $ServerPath) }
-        '-Verbose'
+        if ($ShowTaskWindow) { '-WaitForKey' }
     )
-    $script = "
-        Import-Module '$PSScriptRoot/Update-IPFilter.psm1'
-        Update-IPFilter $($scriptArgs -join ' ')
-        "
-    # convert to a single line...
-    $script = ($script.Trim()) -replace '\r?\n\s*', '; '
-    Write-verbose "Script: $script"
 
-    $pwshArgs = "-NoProfile -ExecutionPolicy ByPass"
-    if ($ShowTaskWindow) {
-        $pwshArgs += " -NoExit"
-    }
-    else {
-        $pwshArgs += " -WindowStyle Hidden -NonInteractive"
-    }
-    $pwshArgs += " -Command `"$(escapeDQ $script)`""
+    $cmd = "&{ $script } $($scriptArgs -join ' ')"
+    Write-verbose "Command: $cmd"
+
+    $pwshArgs = @(
+        '-nologo'
+        '-noprofile'
+        '-executionpolicy', 'bypass'
+        '-windowstyle', ($ShowTaskWindow ? 'minimized' : 'hidden')
+        '-noexit'
+        '-encodedCommand', [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+    )
+
     $taskAction = New-ScheduledTaskAction `
         -Execute (Get-Command pwsh).Path `
         -Argument $pwshArgs `
-        -WorkingDirectory $PWD
+        -WorkingDirectory $PSScriptRoot
 
     $taskDef = New-ScheduledTask -Action $taskAction -Trigger $TaskTrigger
 
