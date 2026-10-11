@@ -1,4 +1,4 @@
-﻿#requires -Version 7
+#requires -Version 7
 Set-StrictMode -Version Latest
 
 function Install-LatestIPFilter {
@@ -12,12 +12,16 @@ function Install-LatestIPFilter {
     param(
         # Path to save the downloaded IPFilter file. Defaults to './ipfilter.dat'.
         [Parameter(Position = 1)]
+        [ValidateNotNullOrEmpty()]
         [string] $DestinationPath = './ipfilter.dat',
         # URL of the IPFilter source ZIP file. Defaults to 'http://upd.emule-security.org/ipfilter.zip'.
+        [ValidateNotNullOrEmpty()]
         [uri] $SourceUrl = 'http://upd.emule-security.org/ipfilter.zip',
         # Name of the IPFilter file inside the ZIP archive. Defaults to 'guarding.p2p'.
+        [ValidateNotNullOrEmpty()]
         [string] $SourceFile = 'guarding.p2p',
         # Name of the file to store the ETag value. Defaults to 'source.etag' in the same folder as DestinationPath.
+        [ValidateNotNullOrEmpty()]
         [string] $EtagFileName = 'source.etag',
         # If specified, forces update even if the IPFilter file is up to date.
         [switch] $Force
@@ -122,13 +126,15 @@ function Get-QBittorrentCookie {
     [CmdletBinding(PositionalBinding = $false)]
     param(
         # qBittorrent server URL. Defaults to 'http://localhost:8083'.
-        [uri] $ServerUrl = 'http://localhost:8083',
+        [ValidateNotNullOrEmpty()]
+        [uri] $ServerUrl = $env:QBITTORRENT_URL ?? 'http://localhost:8083',
         # Username for the qBittorrent server. If not specified, prompts for username.
-        [string] $UserName,
+        [ValidateNotNullOrEmpty()]
+        [string] $UserName = $env:QBITTORRENT_USERNAME,
         # Password for the qBittorrent server user. If not specified, prompts for password.
         # Empty password is allowed.
-        [AllowEmptyString()]
-        [string] $UserPass
+        [ValidateNotNull()]
+        [string] $UserPass = $env:QBITTORRENT_PASSWORD
     )
 
     if (!$UserName) { $UserName = getQbtUsername }
@@ -172,17 +178,19 @@ function Update-QBittorrentPreferences {
     [CmdletBinding(PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Low')]
     param(
         # qBittorrent server URL. Defaults to 'http://localhost:8083'.
-        [uri] $ServerUrl = 'http://localhost:8083',
+        [ValidateNotNullOrEmpty()]
+        [uri] $ServerUrl = $env:QBITTORRENT_URL ?? 'http://localhost:8083',
         # Username for the qBittorrent server.
-        [string] $UserName,
+        [ValidateNotNullOrEmpty()]
+        [string] $UserName = $env:QBITTORRENT_USERNAME,
         # Password for the qBittorrent server user.
         # If not specified and UserName is provided, then prompts for password.
-        [AllowEmptyString()]
-        [string] $UserPass,
+        [ValidateNotNull()]
+        [string] $UserPass = $env:QBITTORRENT_PASSWORD,
 
         # Path to the IPFilter file relative to the qBittorrent server.
         # Passing an empty string disables IP filtering.
-        [AllowEmptyString()]
+        [ValidateNotNull()]
         [string] $IPFilterPath
     )
 
@@ -246,17 +254,22 @@ function Update-IPFilter {
     [CmdletBinding(PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Low')]
     param (
         # qBittorrent server URL. Defaults to 'http://localhost:8083'.
-        [uri] $ServerUrl = 'http://localhost:8083',
+        [ValidateNotNullOrEmpty()]
+        [uri] $ServerUrl = $env:QBITTORRENT_URL ?? 'http://localhost:8083',
         # Username for the qBittorrent server.
-        [string] $UserName,
+        [ValidateNotNullOrEmpty()]
+        [string] $UserName = $env:QBITTORRENT_USERNAME,
         # Password for the qBittorrent server user.
         # If not specified and UserName is provided, then prompts for password.
-        [string] $UserPass,
+        [ValidateNotNull()]
+        [string] $UserPass = $env:QBITTORRENT_PASSWORD,
         # Path to save the downloaded IPFilter file.
+        [ValidateNotNullOrEmpty()]
         [string] $DestinationPath = './ipfilter.dat',
         # Path to the IPFilter file relative to the qBittorrent server.
         # Use this when the server is running on a different machine or in a container.
         # Defaults to DestinationPath.
+        [ValidateNotNullOrEmpty()]
         [string] $ServerPath,
         # If specified, forces update even if the IPFilter file is up to date.
         [switch] $Force
@@ -334,27 +347,35 @@ function Register-UpdateIPFilter {
     [CmdletBinding(PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Low')]
     [OutputType([Microsoft.Management.Infrastructure.CimInstance])]
     param (
-        # qBittorrent server URL. Defaults to 'http://localhost:8083'.
-        [uri] $ServerUrl = 'http://localhost:8083',
-        # Username for the qBittorrent server.
-        [string] $UserName,
-        # Password for the qBittorrent server user.
+        # qBittorrent server URL. Defaults to $env:QBITTORRENT_URL or 'http://localhost:8083'.
+        [ValidateNotNullOrEmpty()]
+        [uri] $ServerUrl = $env:QBITTORRENT_URL ?? 'http://localhost:8083',
+        # Username for the qBittorrent server. Defaults to $env:QBITTORRENT_USERNAME or nothing.
+        [ValidateNotNullOrEmpty()]
+        [string] $UserName = $env:QBITTORRENT_USERNAME,
+        # Password for the qBittorrent server user. Defaults to $env:QBITTORRENT_PASSWORD or nothing.
         # If not specified and UserName is provided, then prompts for password.
-        [AllowEmptyString()]
-        [string] $UserPass,
-        # Path to save the downloaded IPFilter file.
+        [ValidateNotNull()]
+        [string] $UserPass = $env:QBITTORRENT_PASSWORD,
+        # Path to save the downloaded IPFilter file. Defaults to './ipfilter.dat'.
+        [ValidateNotNullOrEmpty()]
         [string] $DestinationPath = './ipfilter.dat',
         # Path to the IPFilter file relative to the qBittorrent server.
         # This is useful when the server is running on a different machine or in a container.
         # Defaults to DestinationPath.
+        [ValidateNotNullOrEmpty()]
         [string] $ServerPath,
 
         # Name of the scheduled task to create. Defaults to 'Update qBittorrent IPFilter'.
+        [ValidateNotNullOrEmpty()]
         [string] $TaskName = $DefaultTaskName,
         # Path of the scheduled task to delete. Defaults to root path '\'.
+        [ValidateNotNullOrEmpty()]
         [string] $TaskPath = '\',
         # Trigger for the scheduled task. Defaults to weekly on Sundays at 8:00 AM.
+        [ValidateNotNull()]
         [object] $TaskTrigger = (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At (Get-Date '8:00 AM')),
+        # If specified, shows the PowerShell window when the task runs. By default, the task runs hidden.
         [switch] $ShowTaskWindow,
         # If specified, overwrites any existing scheduled task with the same name.
         [switch] $Force,
@@ -414,8 +435,10 @@ function Unregister-UpdateIPFilter {
     [CmdletBinding(PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Low')]
     param(
         # Name of the scheduled task to delete. Defaults to 'Update qBittorrent IPFilter'.
+        [ValidateNotNullOrEmpty()]
         [string] $TaskName = $DefaultTaskName,
         # Path of the scheduled task to delete. Defaults to root path '\'.
+        [ValidateNotNullOrEmpty()]
         [string] $TaskPath = '\'
     )
 
